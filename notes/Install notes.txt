@@ -1,0 +1,15 @@
+Install notes
+Tidy install 
+    sudo yum install -y tidy.x86_64
+
+Location of Index.html file
+    /tmp/webpage/index.html
+
+Run HTML Linter 
+    tidy -q -e *.html
+
+
+Automation steps
+    1. lint html file
+    2. lint docker file
+    3. build docker image
