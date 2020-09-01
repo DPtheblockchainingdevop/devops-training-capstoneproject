@@ -1,0 +1,176 @@
+Description: >
+  Author - DeVesco Pierre
+  Project - Udacity DevOps Capstone Project
+  Creates the network and EC2 instaces to Run a Jenkins server in the public domain. Also creates a Green/Blue Subnets
+
+Parameters:
+  ProjectName:
+    Description: An project Name that will be prefixed to resoure names
+    Type: String
+
+  VpcCIDR:
+    Description: VPC IP range in CIDR Notation
+    Type: String
+    Default: 10.0.0.0/24
+
+  GreenSubnetCIDR:
+    Description: Green environment IP range (CIDR notation) for a public subnet
+    Type: String
+    Default: 10.0.1.0/24
+
+  BlueSubnetCIDR:
+    Description: Blue environment IP range (CIDR notation) for the private subnet
+    Type: String
+    Default: 10.0.2.0/24
+
+  InternetCIDR:
+    Description: The CIRD notation for the internet
+    Type: String
+    Default: 0.0.0.0/0
+
+Resources:
+  MainVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-VPC
+  
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-InternetGateway
+  
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MainVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  GreenSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref GreenSubnetCIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-GreenSubnet
+        - Key: Environment
+          Value: Green
+
+  BlueSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref BlueSubnetCIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-BlueSubnet
+        - Key: Environment
+          Value: Blue
+
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP 
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc 
+      Tags:
+        - Key: Name 
+          Value: !Sub ${ProjectName}-NatGatewayEIP
+  
+  NatGateway:
+    Type: AWS::EC2::NatGateway 
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref GreenSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-NatGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable 
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-PublicRoute
+        - Key: Environment
+          Value: Green
+
+  GreenSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation 
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref GreenSubnet
+
+  BlueRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-PrivateRoute
+        - Key: Environment
+          Value: Blue
+
+  BlueSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref BlueRouteTable
+      SubnetId: !Ref BlueSubnet
+
+  GreenRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: !Ref InternetCIDR
+      GatewayId: !Ref InternetGateway
+
+  BlueRoute:
+    Type: AWS::EC2::Route 
+    Properties:
+      RouteTableId: !Ref BlueRouteTable
+      DestinationCidrBlock: !Ref InternetCIDR
+      NatGatewayId: !Ref NatGateway
+          
+Outputs:
+  VPC:
+    Description: A reference to the created VPN
+    Value: !Ref MainVPC
+    Export:
+      Name: !Sub ${ProjectName}-VPCID
+  
+  GreenRouteTable:
+    Description: Green environment Routing (Public Route)
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub ${ProjectName}-Green-RouteTable
+
+  BlueRouteTable:
+    Description: Blue environment Routing (Private Route)
+    Value: !Ref BlueRouteTable
+    Export:
+      Name: !Sub ${ProjectName}-Blue-RouteTable
+    
+  GreenSubnets:
+    Description: Green environment list of subnets
+    Value: !Ref GreenSubnet
+    Export:
+      Name: !Sub ${ProjectName}-Green-Subnet
+  
+  BlueSubnets:
+    Description: Blue environment list of subnets
+    Value: !Ref BlueSubnet
+    Export:
+      Name: !Sub ${ProjectName}-Blue-Subnet
+  
+  
