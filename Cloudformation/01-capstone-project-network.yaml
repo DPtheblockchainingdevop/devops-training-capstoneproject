@@ -57,7 +57,6 @@ Metadata:
       VpcCIDR:
         default: "VPC IP range in CIDR Notation"
 
-
 Resources:
   MainVPC:
     Type: AWS::EC2::VPC
@@ -290,6 +289,11 @@ Resources:
       VpcId: !Ref MainVPC
 
 Outputs:
+  Project:
+    Description: Name of the Project that this is for
+    Value: !Ref ProjectName
+    Export:
+      Name: !Sub ${ProjectName}
   VPC:
     Description: A reference to the created VPN
     Value: !Ref MainVPC
@@ -311,3 +315,5 @@ Outputs:
   SecurityGroups:
     Description: Security group for the cluster control plane communication with worker nodes
     Value: !Join [ ",", [ !Ref ControlPlaneSecurityGroup ] ]
+    Export:
+      Name: !Sub ${ProjectName}-SecurityGroups
