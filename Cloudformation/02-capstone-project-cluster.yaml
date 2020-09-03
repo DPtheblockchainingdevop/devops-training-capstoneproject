@@ -40,7 +40,7 @@ Resources:
                 !Join 
                 - ''
                 - - Fn::ImportValue: !Sub '${ProjectName}'
-                  - '-Project-V2'
+                  - '-Project'
             Version: !Ref KubeVersion
             RoleArn: !Ref ClusterIAMRole
             ResourcesVpcConfig:
