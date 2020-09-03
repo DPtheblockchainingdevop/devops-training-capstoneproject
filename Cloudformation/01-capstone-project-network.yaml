@@ -12,16 +12,26 @@ Parameters:
     Description: VPC IP range in CIDR Notation
     Type: String
     Default: 10.0.0.0/24
-
-  GreenSubnetCIDR:
-    Description: Green environment IP range (CIDR notation) for a public subnet
+  
+  PublicSubnetGreenCIDR:
+    Description: Green environment public IP range (CIDR notation)
     Type: String
     Default: 10.0.1.0/24
+
+  PublicSubnetBlueCIDR:
+    Description: Blue environment public IP Range (CIDR notation)
+    Type: String
+    Default: 10.0.2.0/24
+
+  GreenSubnetCIDR:
+    Description: Green environment IP range (CIDR notation) for a private subnet
+    Type: String
+    Default: 10.0.10.0/24
 
   BlueSubnetCIDR:
     Description: Blue environment IP range (CIDR notation) for the private subnet
     Type: String
-    Default: 10.0.2.0/24
+    Default: 10.0.20.0/24
 
   InternetCIDR:
     Description: The CIRD notation for the internet
@@ -37,6 +47,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ProjectName}-VPC
+        - Key: Project
+          Value: !Ref ProjectName
   
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -44,6 +56,8 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ProjectName}-InternetGateway
+        - Key: Project
+          Value: !Ref ProjectName
   
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -51,24 +65,56 @@ Resources:
       VpcId: !Ref MainVPC
       InternetGatewayId: !Ref InternetGateway
 
+  GreenPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      CidrBlock: !Ref PublicSubnetGreenCIDR
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: kubernetes.io/role/elb
+          Value: 1
+        - Key: Environment
+          Value: Green
+        - Key: Name
+          Value: !Sub ${ProjectName}-GreenPublicSubnet
+  
+  BluePublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      CidrBlock: !Ref PublicSubnetBlueCIDR
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: kubernetes.io/role/elb
+          Value: 1
+        - Key: Environment
+          Value: Blue
+        - Key: Name
+          Value: !Sub ${ProjectName}-BluePublicSubnet
+  
   GreenSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MainVPC
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
       CidrBlock: !Ref GreenSubnetCIDR
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub ${ProjectName}-GreenSubnet
         - Key: Environment
           Value: Green
+        - Key: kubernetes.io/role/internal-elb
+          Value: 1
 
   BlueSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MainVPC
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
       CidrBlock: !Ref BlueSubnetCIDR
       MapPublicIpOnLaunch: false
       Tags:
@@ -76,24 +122,60 @@ Resources:
           Value: !Sub ${ProjectName}-BlueSubnet
         - Key: Environment
           Value: Blue
+        - Key: kubernetes.io/role/internal-elb
+          Value: 1
 
-  NatGatewayEIP:
+  GreenNatGatewayEIP:
     Type: AWS::EC2::EIP 
     DependsOn: InternetGatewayAttachment
     Properties:
       Domain: vpc 
       Tags:
         - Key: Name 
-          Value: !Sub ${ProjectName}-NatGatewayEIP
-  
-  NatGateway:
-    Type: AWS::EC2::NatGateway 
+          Value: !Sub ${ProjectName}-GreenNatGatewayEIP
+        - Key: Environment
+          Value: Green  
+
+  BlueNatGatewayEIP:
+    Type: AWS::EC2::EIP 
+    DependsOn: InternetGatewayAttachment
     Properties:
-      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      Domain: vpc 
+      Tags:
+        - Key: Name 
+          Value: !Sub ${ProjectName}-BlueNatGatewayEIP  
+        - Key: Environment
+          Value: Blue
+
+  GreenNatGateway:
+    Type: AWS::EC2::NatGateway
+    DependsOn:
+      - GreenNatGatewayEIP
+      - InternetGatewayAttachment
+      - GreenPublicSubnet
+    Properties:
+      AllocationId: !GetAtt GreenNatGatewayEIP.AllocationId
       SubnetId: !Ref GreenSubnet
       Tags:
         - Key: Name
-          Value: !Sub ${ProjectName}-NatGateway
+          Value: !Sub ${ProjectName}-GreenNatGateway
+        - Key: Environment
+          Value: Green
+
+  BlueNatGateway:
+    Type: AWS::EC2::NatGateway 
+    DependsOn:
+      - BlueNatGatewayEIP
+      - InternetGatewayAttachment
+      - BluePublicSubnet
+    Properties:
+      AllocationId: !GetAtt BlueNatGatewayEIP.AllocationId
+      SubnetId: !Ref BlueSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-BlueNatGateway
+        - Key: Environment
+          Value: Blue
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable 
@@ -102,14 +184,38 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ProjectName}-PublicRoute
-        - Key: Environment
-          Value: Green
+        - Key: Project
+          Value: !Ref ProjectName
 
   GreenSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation 
     Properties:
-      RouteTableId: !Ref PublicRouteTable
+      RouteTableId: !Ref GreenRouteTable
       SubnetId: !Ref GreenSubnet
+
+  GreenPublicRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref GreenPublicSubnet
+
+  BluePublicRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref BluePublicSubnet
+
+  GreenRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-GreenRoute
+        - Key: Environment
+          Value: Green
+        - Key: Project
+          Value: !Ref ProjectName
 
   BlueRouteTable:
     Type: AWS::EC2::RouteTable
@@ -117,9 +223,11 @@ Resources:
       VpcId: !Ref MainVPC
       Tags:
         - Key: Name
-          Value: !Sub ${ProjectName}-PrivateRoute
+          Value: !Sub ${ProjectName}-BlueRoute
         - Key: Environment
           Value: Blue
+        - Key: Project
+          Value: !Ref ProjectName
 
   BlueSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -127,21 +235,40 @@ Resources:
       RouteTableId: !Ref BlueRouteTable
       SubnetId: !Ref BlueSubnet
 
-  GreenRoute:
+  PublicRoute:
     Type: AWS::EC2::Route
     DependsOn: InternetGatewayAttachment
-    Properties: 
+    Properties:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: !Ref InternetCIDR
       GatewayId: !Ref InternetGateway
 
+  GreenRoute:
+    Type: AWS::EC2::Route
+    DependsOn: 
+      - GreenNatGateway
+      - InternetGatewayAttachment
+    Properties: 
+      RouteTableId: !Ref GreenRouteTable
+      DestinationCidrBlock: !Ref InternetCIDR
+      NatGatewayId: !Ref GreenNatGateway
+
   BlueRoute:
     Type: AWS::EC2::Route 
+    DependsOn:
+      - BlueNatGateway
+      - InternetGatewayAttachment
     Properties:
       RouteTableId: !Ref BlueRouteTable
       DestinationCidrBlock: !Ref InternetCIDR
-      NatGatewayId: !Ref NatGateway
+      NatGatewayId: !Ref BlueNatGateway
           
+  ControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      VpcId: !Ref MainVPC
+
 Outputs:
   VPC:
     Description: A reference to the created VPN
@@ -149,28 +276,18 @@ Outputs:
     Export:
       Name: !Sub ${ProjectName}-VPCID
   
-  GreenRouteTable:
-    Description: Green environment Routing (Public Route)
-    Value: !Ref PublicRouteTable
-    Export:
-      Name: !Sub ${ProjectName}-Green-RouteTable
-
-  BlueRouteTable:
-    Description: Blue environment Routing (Private Route)
-    Value: !Ref BlueRouteTable
-    Export:
-      Name: !Sub ${ProjectName}-Blue-RouteTable
-    
   GreenSubnets:
     Description: Green environment list of subnets
-    Value: !Ref GreenSubnet
+    Value: !Join [ ",", [ !Ref GreenPublicSubnet, !Ref GreenSubnet ] ]
     Export:
       Name: !Sub ${ProjectName}-Green-Subnet
   
   BlueSubnets:
     Description: Blue environment list of subnets
-    Value: !Ref BlueSubnet
+    Value: !Join [ ",", [ !Ref BluePublicSubnet, !Ref BlueSubnet ] ] 
     Export:
       Name: !Sub ${ProjectName}-Blue-Subnet
   
-  
+  SecurityGroups:
+    Description: Security group for the cluster control plane communication with worker nodes
+    Value: !Join [ ",", [ !Ref ControlPlaneSecurityGroup ] ]

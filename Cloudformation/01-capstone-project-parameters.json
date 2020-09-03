@@ -14,5 +14,13 @@
     {
         "ParameterKey": "BlueSubnetCIDR",
         "ParameterValue": "10.0.20.0/24"
+    },
+    {
+        "ParameterKey": "PublicSubnetGreenCIDR",
+        "ParameterValue": "10.0.1.0/24"
+    },
+    {
+        "ParameterKey": "PublicSubnetBlueCIDR",
+        "ParameterValue": "10.0.2.0/24"
     }
 ]
