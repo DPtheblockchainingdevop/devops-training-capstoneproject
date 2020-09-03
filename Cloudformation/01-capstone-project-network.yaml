@@ -38,6 +38,26 @@ Parameters:
     Type: String
     Default: 0.0.0.0/0
 
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Kubernetes Network Configuration"
+        Parameters:
+          - ProjectName
+          - VpcCIDR
+          - PublicSubnetGreenCIDR
+          - PublicSubnetBlueCIDR
+          - GreenSubnetCIDR
+          - BlueSubnetCIDR
+    ParameterLabels:
+      ProjectName:
+        default: "Name of the Project which will be used for the Cluster name"
+      VpcCIDR:
+        default: "VPC IP range in CIDR Notation"
+
+
 Resources:
   MainVPC:
     Type: AWS::EC2::VPC
