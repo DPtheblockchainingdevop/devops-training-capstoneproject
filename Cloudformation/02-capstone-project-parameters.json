@@ -1,0 +1,14 @@
+[
+    {
+        "ParameterKey": "ClusterIAMRole",
+        "ParameterValue": "arn:aws:iam::833142362823:role/eksClusterRole"
+    },
+    {
+        "ParameterKey": "ProjectName",
+        "ParameterValue": "Capstone"
+    },
+    {
+        "ParameterKey": "KubeVersion",
+        "ParameterValue": "1.17"
+    }
+]

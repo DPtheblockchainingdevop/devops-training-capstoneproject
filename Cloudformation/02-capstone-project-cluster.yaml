@@ -1,0 +1,77 @@
+Description: >
+  Author - DeVesco Pierre
+  Project - Udacity DevOps Capstone Project
+  Creates the Kubernetes Cluster for the capstone project. Will use Green and Blue networks 
+
+Parameters:
+    ClusterIAMRole:
+        Description: The IAM Role to allow the kubernetes control plane to manage AWS resources.
+        Type: String
+    
+    KubeVersion:
+        Description: The Desired Kubernetes version for the cluster. Defaults to the latest version
+        Type: String
+
+    ProjectName:
+        Description: An project Name that will be prefixed to resoure names
+        Type: String
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Kubernetes Cluster Configuration"
+        Parameters:
+          - ProjectName
+          - ClusterIAMRole
+          - KubeVersion
+    ParameterLabels:
+      ProjectName:
+        default: "Name of the Project which will be used for the Cluster name"
+      ClusterIAMRole:
+        default: "IAM Role to allow the kubernetes control plane to manage AWS resources"
+
+Resources:
+    KubeCluster:
+        Type: AWS::EKS::Cluster
+        Properties:
+            Name: 
+                !Join 
+                - ''
+                - - Fn::ImportValue: !Sub '${ProjectName}'
+                  - '-Project-V2'
+            Version: !Ref KubeVersion
+            RoleArn: !Ref ClusterIAMRole
+            ResourcesVpcConfig:
+                SecurityGroupIds:
+                    - Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+                SubnetIds:
+                    - !Select 
+                        - 0
+                        - !Split 
+                            - ','
+                            - 'Fn::ImportValue': !Sub '${ProjectName}-Green-Subnet'
+                    - !Select
+                        - 1
+                        - !Split
+                            - ','
+                            - 'Fn::ImportValue': !Sub '${ProjectName}-Green-Subnet'
+                    - !Select
+                        - 0
+                        - !Split
+                            - ','
+                            - 'Fn::ImportValue': !Sub '${ProjectName}-Blue-Subnet'
+                    - !Select
+                        - 1
+                        - !Split
+                            - ','
+                            - 'Fn::ImportValue': !Sub '${ProjectName}-Blue-Subnet'
+
+
+Outputs:
+    EKSControlPlane:
+        Description: Amazon EKS Control Plane Logical ID
+        Value: !Ref KubeCluster
+        Export:
+            Name: !Sub ${ProjectName}-EKS-ControlPlane
