@@ -68,10 +68,181 @@ Resources:
                             - ','
                             - 'Fn::ImportValue': !Sub '${ProjectName}-Blue-Subnet'
 
+  NodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for all nodes in the cluster
+      Tags:
+        - Key: !Sub kubernetes.io/cluster/${KubeCluster}
+          Value: owned
+        - Key: Project
+          Value: !Ref ProjectName
+      VpcId: Fn::ImportValue: !Sub '${ProjectName}-VPCID'
+
+  NodeSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: NodeSecurityGroup
+    Properties: 
+      Description: Allow Node to communicate with each other
+      FromPort: 0
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref NodeSecurityGroup
+      ToPort: 65535
+
+  ClusterControlPlaneSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: NodeSecurityGroup
+    Properties: 
+      Description: Allow pods to communicate with the cluster API server
+      FromPort: 443
+      ToPort: 443
+      GroupId: Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+      IpProtocol: tcp
+      SourceSecurityGroupId: !Ref NodeSecurityGroup
+  
+  ControlPlaneEgressToNodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroupEgress
+    DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow the cluster control plane to communicate with worker Kubelet and pods
+      DestinationSecurityGroupId: !Ref NodeSecurityGroup
+      FromPort: 1025
+      GroupId: Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+      IpProtocol: tcp
+      ToPort: 65535
+
+  ControlPlaneEgressToNodeSecurityGroupOn443:
+    Type: AWS::EC2::SecurityGroupEgress
+    DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow the cluster control plane to communicate with the pods running extension API servers on port 443
+      DestinationSecurityGroupId: !Ref NodeSecurityGroup
+      FromPort: 443
+      ToPort: 443
+      GroupId: Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+      IpProtocol: tcp
+    
+  NodeSecurityGroupFromControlPlaneIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow worker Kubelets and pods to receive communication from the cluster control plane
+      FromPort: 1025
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: tcp
+      SourceSecurityGroupId: Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+      ToPort: 65535
+  
+  NodeSecurityGroupFromControlPlaneon443Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: NodeSecurityGroup
+    Properties:
+      Description: Allow pods running extension API servers on port 443 to receive communication from cluster control plane
+      FromPort: 443
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: tcp
+      SourceSecurityGroupId: Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+      ToPort: 443
+    
+  NodeLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xdz
+            Ebs:
+              DeleteOnTermination: true
+              VolumeSize: 20
+              VolumeType: gp2
+        IamInstanceProfile:
+          Arn: arn:aws:iam::833142362823:instance-profile/NodeInstanceRole
+        ImageId:
+        InstanceType: t3.medium
+        KeyName:
+        SecurityGroupIds:
+          - !Ref NodeSecurityGroup
+        UserData: !Base64
+          Fn::Sub: |
+            #!/bin/bash
+            set -o xtrace
+            /etc/eks/bootstrap.sh Capstone-Project-V2 ${BootstrapArguments}
+            /opt/aws/bin/cfn-signal --exit-code $? \
+                  --stack ${AWS::StackName} \
+                  --resource NodeGroup \
+                  --region ${AWS::Region}
+        MetadataOptions:
+          HttpPutResponseHopLimit: 2
+          HttpEndpoint: enabled
+          
+  NodeGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      DesiredCapacity: 2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref NodeLaunchTemplate
+        Version: !GetAtt NodeLaunchTemplate.LatestVersionNumber
+      MaxSize: 6
+      MinSize: 2
+      Tags:
+        - Key: Name
+          PropagateAtLaunch: true
+          Value: 
+            !Join 
+              - ''
+              - - Fn::ImportValue: !Sub '${ProjectName}'
+                - '-Project-'
+                - !Sub '${NodeGroupName}'
+                - '-Node'
+        - Key: !Sub kubernetes.io/cluster/${KubeCluster}
+          PropagateAtLaunch: true
+          Value: owned
+      VPCZoneIdentifier: 
+        - !Select 
+          - 0
+          - !Split 
+            - ','
+            - 'Fn::ImportValue': !Sub '${ProjectName}-Green-Subnet'
+        - !Select
+          - 1
+          - !Split
+            - ','
+            - 'Fn::ImportValue': !Sub '${ProjectName}-Green-Subnet'
+        - !Select
+          - 0
+          - !Split
+            - ','
+            - 'Fn::ImportValue': !Sub '${ProjectName}-Blue-Subnet'
+        - !Select
+          - 1
+          - !Split
+            - ','
+            - 'Fn::ImportValue': !Sub '${ProjectName}-Blue-Subnet'
+    UpdatePolicy:
+      AutoscalingRollingUpdate:
+        MaxBatchSize: 1
+        MinInstancesInService: 2
+        PauseTime: PT5M
 
 Outputs:
-    EKSControlPlane:
-        Description: Amazon EKS Control Plane Logical ID
-        Value: !Ref KubeCluster
-        Export:
-            Name: !Sub ${ProjectName}-EKS-ControlPlane
+  EKSControlPlane:
+    Description: Amazon EKS Control Plane Logical ID
+    Value: !Ref KubeCluster
+    Export:
+      Name: !Sub ${ProjectName}-EKS-ControlPlane
+  
+  NodeInstanceRole:
+    Description: The node Instance role
+    Value: !GetAtt NodeInstanceRole.Arn
+    Export:
+      Name: !Sub ${ProjectName}-NodeInstance-ARN
+  
+  NodeSecurityGroup:
+    Description: The security group for the node group
+    Value: !Ref NodeSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-NodeSecurityGroup
+  
+  NodeAutoScalingGroup:
+    Description: The Autoscaling Group
+    Value: !Ref NodeGroup
