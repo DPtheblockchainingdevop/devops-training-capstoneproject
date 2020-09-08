@@ -12,7 +12,19 @@ pipeline {
     }
 
     stage('Build Docker Image') {
-      docker.build('capstone')
+      steps {
+        echo 'Building docker Image'
+        sh 'docker build -f Dockerfile -t capstone .'
+        echo 'Validating Build'
+        sh 'docker images capstone'
+      }
+    }
+
+    stage('Tag File to Latest') {
+      steps {
+        echo 'Tagging Image'
+        sh 'docker tag capstone:latest 833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest'
+      }
     }
 
     stage('Push Image to ECR') {
