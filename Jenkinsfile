@@ -13,7 +13,7 @@ pipeline {
     stage('Build Docker Image') {
       steps {
         echo 'Building docker Image'
-        sh 'docker build -f ~/home/ubuntu/Dockerfile -t capstone/ngix-project:latest .'
+        sh 'docker build -f Dockerfile -t capstone/ngix-project:latest .'
         echo 'Validating Build'
         sh 'docker images capstone/ngix-project:latest'
       }
