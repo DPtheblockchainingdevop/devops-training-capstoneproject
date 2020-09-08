@@ -30,7 +30,7 @@ pipeline {
     stage('Push Image to ECR') {
       steps {   
         script {
-          docker.withRegistry('https://833142362823.dkr.ecr.us-east-2.amazonaws.com', 'ecr:us-east-2:aws-cred'){
+          docker.withRegistry('https://833142362823.dkr.ecr.us-east-2.amazonaws.com', 'ecr:us-east-2:aws-creds'){
             def custImage = docker.build('capstone:${env.BUILD_ID}')
             custImage.push()
           }
