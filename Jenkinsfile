@@ -1,4 +1,9 @@
 pipeline {
+  environment {
+    registry = '833142362823.dkr.ecr.us-east-2.amazonaws.com'
+    registryCredential = 'aws-cred'
+    dockerImage = ''
+  }
   agent any
   stages {
     stage('Linting') {
@@ -12,26 +17,12 @@ pipeline {
     }
 
     stage('Build Docker Image') {
-      steps {
-        echo 'Building docker Image'
-        sh 'docker build -f Dockerfile -t capstone .'
-        echo 'Validating Build'
-        sh 'docker images capstone'
-      }
-    }
-
-    stage('Tag File to Latest') {
-      steps {
-        echo 'Retrieve Auth Token'
-        sh 'aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 833142362823.dkr.ecr.us-east-2.amazonaws.com'
-        echo 'Tagging Image'
-        sh 'docker tag capstone:latest 833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest'
-      }
+      docker.build('capstone')
     }
 
     stage('Push Image to ECR') {
-      steps {
-        sh 'docker push 833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest'
+      docker.withRegistry("https://" + registry, "ecr:us-east-2:"+ registryCredential){
+        docker.image('capstone').push('latest')
       }
     }
 
