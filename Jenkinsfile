@@ -28,10 +28,13 @@ pipeline {
     }
 
     stage('Push Image to ECR') {
-      docker.withRegistry('https://833142362823.dkr.ecr.us-east-2.amazonaws.com', 'ecr:us-east-2:aws-cred'){
-        docker.image('capstone').push('latest')
+      steps {
+        script {
+          docker.withRegistry('https://833142362823.dkr.ecr.us-east-2.amazonaws.com', 'ecr:us-east-2:aws-cred'){
+            docker.image('capstone').push('latest')
+          }
+        }
       }
     }
-
   }
 }
