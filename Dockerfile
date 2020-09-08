@@ -1,4 +1,4 @@
-FROM nginx:latest
+FROM nginx:1.19
 
 # Make working dictory ngnix html dirctory
 WORKDIR /usr/share/nginx/html/
@@ -7,7 +7,7 @@ WORKDIR /usr/share/nginx/html/
 COPY ./index.html .
 
 # Install then run Linter tidy
-RUN apt update && apt-get install -y tidy
+RUN apt-get update -y && apt-get install -y tidy=1:5.2.0-2
 # Lint the html file with tidy
 RUN tidy -q -e *.html
 
