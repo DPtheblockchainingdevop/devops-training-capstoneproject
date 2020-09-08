@@ -1,9 +1,4 @@
 pipeline {
-  environment {
-    registry = '833142362823.dkr.ecr.us-east-2.amazonaws.com'
-    registryCredential = 'aws-cred'
-    dockerImage = ''
-  }
   agent any
   stages {
     stage('Linting') {
@@ -21,7 +16,7 @@ pipeline {
     }
 
     stage('Push Image to ECR') {
-      docker.withRegistry("https://" + registry, "ecr:us-east-2:"+ registryCredential){
+      docker.withRegistry('https://833142362823.dkr.ecr.us-east-2.amazonaws.com', 'ecr:us-east-2:aws-cred'){
         docker.image('capstone').push('latest')
       }
     }
