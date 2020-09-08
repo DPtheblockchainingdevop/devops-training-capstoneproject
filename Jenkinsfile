@@ -7,7 +7,7 @@ pipeline {
         sh 'tidy -q -e index.html'
         echo 'Linting Dockerfile'
         sh 'ls -al'
-        sh 'hadolint Dockerfile'
+        sh 'hadolint --ignore DL3009 --ignore DL3015 Dockerfile'
       }
     }
 
