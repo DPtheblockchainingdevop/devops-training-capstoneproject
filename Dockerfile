@@ -7,7 +7,7 @@ WORKDIR /usr/share/nginx/html/
 COPY ./index.html .
 
 # Install then run Linter tidy
-RUN apt-get update -y && apt-get install -y tidy=1:5.2.0-2
+RUN apt-get update -y && apt-get install -y tidy=2:5.6.0-10
 # Lint the html file with tidy
 RUN tidy -q -e index.html
 
