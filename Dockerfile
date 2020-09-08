@@ -9,7 +9,7 @@ COPY ./index.html .
 # Install then run Linter tidy
 RUN apt-get update -y && apt-get install -y tidy=1:5.2.0-2
 # Lint the html file with tidy
-RUN tidy -q -e *.html
+RUN tidy -q -e index.html
 
 # Expose port 80
 EXPOSE 80
