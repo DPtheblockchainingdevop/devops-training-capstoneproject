@@ -4,17 +4,26 @@ Description: >
   Creates the Kubernetes Cluster for the capstone project. Will use Green and Blue networks 
 
 Parameters:
-    ClusterIAMRole:
-        Description: The IAM Role to allow the kubernetes control plane to manage AWS resources.
-        Type: String
-    
-    KubeVersion:
-        Description: The Desired Kubernetes version for the cluster. Defaults to the latest version
-        Type: String
+  BootstrapArguments:
+    Type: String
+    Default: ""
+    Description: "Arguments to pass to the bootstrap script. See files/bootstrap.sh in https://github.com/awslabs/amazon-eks-ami"
 
-    ProjectName:
-        Description: An project Name that will be prefixed to resoure names
-        Type: String
+  ClusterIAMRole:
+    Description: The IAM Role to allow the kubernetes control plane to manage AWS resources.
+    Type: String
+    
+  KubeVersion:
+    Description: The Desired Kubernetes version for the cluster. Defaults to the latest version
+    Type: String
+
+  NodeGroupName:
+    Type: String
+    Description: Unique identifier for the Node Group.
+  
+  ProjectName:
+    Description: An project Name that will be prefixed to resoure names
+    Type: String
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -23,9 +32,11 @@ Metadata:
         Label:
           default: "Kubernetes Cluster Configuration"
         Parameters:
+          - BootstrapArguments
           - ProjectName
           - ClusterIAMRole
           - KubeVersion
+          - NodeGroupName
     ParameterLabels:
       ProjectName:
         default: "Name of the Project which will be used for the Cluster name"
@@ -33,52 +44,28 @@ Metadata:
         default: "IAM Role to allow the kubernetes control plane to manage AWS resources"
 
 Resources:
-    KubeCluster:
-        Type: AWS::EKS::Cluster
-        Properties:
-            Name: 
-                !Join 
-                - ''
-                - - Fn::ImportValue: !Sub '${ProjectName}'
-                  - '-Project'
-            Version: !Ref KubeVersion
-            RoleArn: !Ref ClusterIAMRole
-            ResourcesVpcConfig:
-                SecurityGroupIds:
-                    - Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
-                SubnetIds:
-                    - !Select 
-                        - 0
-                        - !Split 
-                            - ','
-                            - 'Fn::ImportValue': !Sub '${ProjectName}-Green-Subnet'
-                    - !Select
-                        - 1
-                        - !Split
-                            - ','
-                            - 'Fn::ImportValue': !Sub '${ProjectName}-Green-Subnet'
-                    - !Select
-                        - 0
-                        - !Split
-                            - ','
-                            - 'Fn::ImportValue': !Sub '${ProjectName}-Blue-Subnet'
-                    - !Select
-                        - 1
-                        - !Split
-                            - ','
-                            - 'Fn::ImportValue': !Sub '${ProjectName}-Blue-Subnet'
+  ControlPlaneSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Cluster communication with worker nodes
+      VpcId: 
+        'Fn::ImportValue': !Sub '${ProjectName}-VPCID'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
 
   NodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for all nodes in the cluster
+      VpcId: 
+        Fn::ImportValue: !Sub '${ProjectName}-VPCID'
       Tags:
         - Key: !Sub kubernetes.io/cluster/${KubeCluster}
           Value: owned
         - Key: Project
           Value: !Ref ProjectName
-      VpcId: Fn::ImportValue: !Sub '${ProjectName}-VPCID'
-
+    
   NodeSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
     DependsOn: NodeSecurityGroup
@@ -92,137 +79,346 @@ Resources:
 
   ClusterControlPlaneSecurityGroupIngress:
     Type: AWS::EC2::SecurityGroupIngress
-    DependsOn: NodeSecurityGroup
+    DependsOn: 
+      - NodeSecurityGroup
+      - ControlPlaneSecurityGroup
     Properties: 
       Description: Allow pods to communicate with the cluster API server
       FromPort: 443
       ToPort: 443
-      GroupId: Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+      GroupId: !Ref ControlPlaneSecurityGroup
       IpProtocol: tcp
       SourceSecurityGroupId: !Ref NodeSecurityGroup
   
   ControlPlaneEgressToNodeSecurityGroup:
     Type: AWS::EC2::SecurityGroupEgress
-    DependsOn: NodeSecurityGroup
+    DependsOn: 
+      - NodeSecurityGroup
+      - ControlPlaneSecurityGroup
     Properties:
       Description: Allow the cluster control plane to communicate with worker Kubelet and pods
       DestinationSecurityGroupId: !Ref NodeSecurityGroup
       FromPort: 1025
-      GroupId: Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+      GroupId: !Ref ControlPlaneSecurityGroup
       IpProtocol: tcp
       ToPort: 65535
 
   ControlPlaneEgressToNodeSecurityGroupOn443:
     Type: AWS::EC2::SecurityGroupEgress
-    DependsOn: NodeSecurityGroup
+    DependsOn: 
+      - NodeSecurityGroup
+      - ControlPlaneSecurityGroup
     Properties:
       Description: Allow the cluster control plane to communicate with the pods running extension API servers on port 443
       DestinationSecurityGroupId: !Ref NodeSecurityGroup
       FromPort: 443
       ToPort: 443
-      GroupId: Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+      GroupId: !Ref ControlPlaneSecurityGroup
       IpProtocol: tcp
     
   NodeSecurityGroupFromControlPlaneIngress:
     Type: AWS::EC2::SecurityGroupIngress
-    DependsOn: NodeSecurityGroup
+    DependsOn: 
+      - NodeSecurityGroup
+      - ControlPlaneSecurityGroup
     Properties:
       Description: Allow worker Kubelets and pods to receive communication from the cluster control plane
       FromPort: 1025
       GroupId: !Ref NodeSecurityGroup
       IpProtocol: tcp
-      SourceSecurityGroupId: Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+      SourceSecurityGroupId: !Ref ControlPlaneSecurityGroup
       ToPort: 65535
   
   NodeSecurityGroupFromControlPlaneon443Ingress:
     Type: AWS::EC2::SecurityGroupIngress
-    DependsOn: NodeSecurityGroup
+    DependsOn: 
+      - NodeSecurityGroup
+      - ControlPlaneSecurityGroup
     Properties:
       Description: Allow pods running extension API servers on port 443 to receive communication from cluster control plane
       FromPort: 443
       GroupId: !Ref NodeSecurityGroup
       IpProtocol: tcp
-      SourceSecurityGroupId: Fn::ImportValue: !Sub '${ProjectName}-SecurityGroups'
+      SourceSecurityGroupId: !Ref ControlPlaneSecurityGroup
       ToPort: 443
-    
-  NodeLaunchTemplate:
-    Type: AWS::EC2::LaunchTemplate
+  
+  ControlPlaneEgressToInternet:
+    Type: AWS::EC2::SecurityGroupEgress
+    DependsOn: ControlPlaneSecurityGroup
     Properties:
-      LaunchTemplateData:
-        BlockDeviceMappings:
-          - DeviceName: /dev/xdz
-            Ebs:
-              DeleteOnTermination: true
-              VolumeSize: 20
-              VolumeType: gp2
-        IamInstanceProfile:
-          Arn: arn:aws:iam::833142362823:instance-profile/NodeInstanceRole
-        ImageId:
-        InstanceType: t3.medium
-        KeyName:
-        SecurityGroupIds:
-          - !Ref NodeSecurityGroup
-        UserData: !Base64
-          Fn::Sub: |
-            #!/bin/bash
-            set -o xtrace
-            /etc/eks/bootstrap.sh Capstone-Project-V2 ${BootstrapArguments}
-            /opt/aws/bin/cfn-signal --exit-code $? \
-                  --stack ${AWS::StackName} \
-                  --resource NodeGroup \
-                  --region ${AWS::Region}
-        MetadataOptions:
-          HttpPutResponseHopLimit: 2
-          HttpEndpoint: enabled
-          
-  NodeGroup:
-    Type: AWS::AutoScaling::AutoScalingGroup
+      Description: Allow Internet Traffic out for initial Setup. Will disable in the future
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      CidrIp: 0.0.0.0/0
+      GroupId: !Ref ControlPlaneSecurityGroup
+
+  ControlPlaneSSHAccess:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: ControlPlaneSecurityGroup
     Properties:
-      DesiredCapacity: 2
-      LaunchTemplate:
-        LaunchTemplateId: !Ref NodeLaunchTemplate
-        Version: !GetAtt NodeLaunchTemplate.LatestVersionNumber
-      MaxSize: 6
-      MinSize: 2
+      Description: Allow SSH Access from the JumpBox to all cluster machines
+      FromPort: 22
+      ToPort: 22
+      IpProtocol: tcp
+      GroupId: !Ref ControlPlaneSecurityGroup
+      SourceSecurityGroupId: !Ref JumpBoxSecurityGroup
+
+  NodeGroupSSHAccess:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: 
+      - NodeSecurityGroup
+      - ControlPlaneSecurityGroup
+    Properties:
+      Description: Allow SSH Access from the ControlPlaneSecurityGroup to all nodes
+      FromPort: 22
+      ToPort: 22
+      IpProtocol: tcp
+      GroupId: !Ref NodeSecurityGroup
+      SourceSecurityGroupId: !Ref JumpBoxSecurityGroup
+
+  JumpBoxSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: JumpBox
+      GroupDescription: Security Group for the JumpBox that will be used for troubleshooting
+      VpcId: 
+        Fn::ImportValue: !Sub '${ProjectName}-VPCID'
       Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  JumpBoxSecurityGroupforSSHon22Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: JumpBoxSecurityGroup
+    Properties:
+      Description: Allows SSH Access from Home to the JumpBox
+      FromPort: 22
+      ToPort: 22
+      IpProtocol: tcp
+      CidrIp: 67.164.176.221/32
+      GroupId: !Ref JumpBoxSecurityGroup
+
+  JenkinsSecurityGroupfor8080Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: JumpBoxSecurityGroup
+    Properties:
+      Description: Allows HTTP access on port 8080 for Jenkins
+      FromPort: 8080
+      ToPort: 8080
+      IpProtocol: tcp
+      CidrIp: 0.0.0.0/0
+      GroupId: !Ref JumpBoxSecurityGroup
+
+  JumpBoxSecurityGroupEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    DependsOn: JumpBoxSecurityGroup
+    Properties:
+      Description: Allow JumpBox to speak to the internet
+      IpProtocol: -1
+      FromPort: -1
+      ToPort: -1
+      CidrIp: 0.0.0.0/0
+      GroupId: !Ref JumpBoxSecurityGroup
+
+  KubeCluster:
+    DependsOn: ControlPlaneSecurityGroup
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: 
+        !Join 
+          - ''
+          - - Fn::ImportValue: !Sub '${ProjectName}'
+            - '-Project'
+      Version: !Ref KubeVersion
+      RoleArn: !Ref ClusterIAMRole
+      ResourcesVpcConfig:
+        SecurityGroupIds: 
+          - !Ref ControlPlaneSecurityGroup
+          # - !Ref JumpBox
+        SubnetIds:
+          - !Select 
+            - 0
+            - !Split 
+              - ','
+              - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
+          - !Select
+            - 1
+            - !Split
+              - ','
+              - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
+          - !Select
+            - 0
+            - !Split
+              - ','
+              - 'Fn::ImportValue': !Sub '${ProjectName}-PRIV-NETS'
+          - !Select
+            - 1
+            - !Split
+              - ','
+              - 'Fn::ImportValue': !Sub '${ProjectName}-PRIV-NETS'
+
+  # NodeLaunchTemplate:
+  #   Type: AWS::EC2::LaunchTemplate
+  #   DependsOn: 
+  #     - NodeSecurityGroup
+  #     - KubeCluster
+  #   Properties:
+  #     LaunchTemplateData:
+  #       BlockDeviceMappings:
+  #         - DeviceName: /dev/xvda
+  #           Ebs:
+  #             DeleteOnTermination: true
+  #             VolumeSize: 20
+  #             VolumeType: gp2
+  #       IamInstanceProfile:
+  #         Arn: arn:aws:iam::833142362823:instance-profile/NodeInstanceRole
+  #       ImageId: ami-072868043b527ff26
+  #       InstanceType: t3.medium
+  #       KeyName: Jenkins-training
+  #       SecurityGroupIds:
+  #         - !Ref NodeSecurityGroup
+  #         - !Ref JumpBoxSecurityGroup
+  #       UserData: !Base64
+  #         Fn::Sub: |
+  #           #!/bin/bash
+  #           set -o xtrace
+  #           /etc/eks/bootstrap.sh ${KubeCluster} ${BootstrapArguments}
+  #           /opt/aws/bin/cfn-signal --exit-code $? \
+  #                 --stack ${AWS::StackName} \
+  #                 --resource NodeGroup \
+  #                 --region ${AWS::Region}
+  #       MetadataOptions:
+  #         HttpPutResponseHopLimit: 2
+  #         HttpEndpoint: enabled
+          
+  # NodeGroup:
+  #   DependsOn: 
+  #     - KubeCluster
+  #     - NodeLaunchTemplate
+  #   Type: AWS::AutoScaling::AutoScalingGroup
+  #   Properties:
+  #     DesiredCapacity: 2
+  #     LaunchTemplate:
+  #       LaunchTemplateId: !Ref NodeLaunchTemplate
+  #       Version: !GetAtt NodeLaunchTemplate.LatestVersionNumber
+  #     MaxSize: 6
+  #     MinSize: 2
+  #     Tags:
+  #       - Key: Name
+  #         PropagateAtLaunch: true
+  #         Value: 
+  #           !Join 
+  #             - ''
+  #             - - Fn::ImportValue: !Sub '${ProjectName}'
+  #               - '-Project-'
+  #               - !Sub '${NodeGroupName}'
+  #               - '-Node'
+  #       - Key: !Sub kubernetes.io/cluster/${KubeCluster}
+  #         PropagateAtLaunch: true
+  #         Value: owned
+  #     VPCZoneIdentifier: 
+  #       - Fn::ImportValue: !Sub '${ProjectName}-Blue-Subnets'
+  #       - Fn::ImportValue: !Sub '${ProjectName}-Green-Subnets'
+  #       - !Select
+  #         - 0
+  #         - !Split
+  #           - ','
+  #           - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
+  #       - !Select
+  #         - 1
+  #         - !Split
+  #           - ','
+  #           - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
+  #   UpdatePolicy:
+  #     AutoscalingRollingUpdate:
+  #       MaxBatchSize: 1
+  #       MinInstancesInService: 2
+  #       PauseTime: PT5M
+
+  EKSNodeGroup:
+    Type: AWS::EKS::Nodegroup 
+    DependsOn:
+      - KubeCluster
+      # - NodeLaunchTemplate
+    Properties:
+      ClusterName: !Ref KubeCluster
+      NodeRole: arn:aws:iam::833142362823:role/NodeInstanceRole
+      ScalingConfig:
+        MinSize: 2
+        MaxSize: 6
+        DesiredSize: 2
+      AmiType: AL2_x86_64
+      InstanceTypes: 
+        - t3.medium
+      RemoteAccess:
+        Ec2SshKey: Jenkins-training
+        SourceSecurityGroups:
+          - !Ref NodeSecurityGroup
+          - !Ref JumpBoxSecurityGroup
+      Subnets:
+        - Fn::ImportValue: !Sub '${ProjectName}-Blue-Subnets'
+        - Fn::ImportValue: !Sub '${ProjectName}-Green-Subnets'
+        - !Select
+          - 0
+          - !Split
+            - ','
+            - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
+        - !Select
+          - 1
+          - !Split
+            - ','
+            - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
+      Tags:
+        Project: !Ref ProjectName
+
+
+  JumpBoxServer:
+    DependsOn: JumpBoxSecurityGroup
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.medium
+      ImageId: ami-0010d386b82bc06f0
+      AvailabilityZone: !Select [1, !GetAZs '']
+      KeyName: Jenkins-training
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          DeleteOnTermination: true
+          GroupSet:
+            - !Ref JumpBoxSecurityGroup
+          SubnetId: 
+            !Select
+            - 1
+            - !Split
+              - ','
+              - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
+      SourceDestCheck: true
+      UserData:
+        'Fn::Base64': !Sub |
+          #!/bin/bash
+          apt-get update 
+          apt install -y default-jdk apt-transport-https ca-certificates curl software-properties-common tidy 
+          wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | apt-key add -
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sh -c 'echo deb https://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+          add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+          apt-get update
+          apt-get install -y jenkins docker-ce
+          usermod -aG docker ubuntu
+          usermod -aG docker jenkins
+          systemctl start jenkins
+          systemctl enable jenkins
+          systemctl status jenkins
+      Tags:
+        - Key: Project
+          Value: !Sub ${ProjectName}
         - Key: Name
-          PropagateAtLaunch: true
-          Value: 
-            !Join 
-              - ''
-              - - Fn::ImportValue: !Sub '${ProjectName}'
-                - '-Project-'
-                - !Sub '${NodeGroupName}'
-                - '-Node'
-        - Key: !Sub kubernetes.io/cluster/${KubeCluster}
-          PropagateAtLaunch: true
-          Value: owned
-      VPCZoneIdentifier: 
-        - !Select 
-          - 0
-          - !Split 
-            - ','
-            - 'Fn::ImportValue': !Sub '${ProjectName}-Green-Subnet'
-        - !Select
-          - 1
-          - !Split
-            - ','
-            - 'Fn::ImportValue': !Sub '${ProjectName}-Green-Subnet'
-        - !Select
-          - 0
-          - !Split
-            - ','
-            - 'Fn::ImportValue': !Sub '${ProjectName}-Blue-Subnet'
-        - !Select
-          - 1
-          - !Split
-            - ','
-            - 'Fn::ImportValue': !Sub '${ProjectName}-Blue-Subnet'
-    UpdatePolicy:
-      AutoscalingRollingUpdate:
-        MaxBatchSize: 1
-        MinInstancesInService: 2
-        PauseTime: PT5M
+          Value: !Sub ${ProjectName}-JumpBox 
+        - Key: App 
+          Value: Jenkins
+        - Key: App
+          Value: Docker
 
 Outputs:
   EKSControlPlane:
@@ -231,11 +427,11 @@ Outputs:
     Export:
       Name: !Sub ${ProjectName}-EKS-ControlPlane
   
-  NodeInstanceRole:
-    Description: The node Instance role
-    Value: !GetAtt NodeInstanceRole.Arn
-    Export:
-      Name: !Sub ${ProjectName}-NodeInstance-ARN
+  # NodeInstanceRole:
+    # Description: The node Instance role
+    # Value: !GetAtt NodeInstanceRole.Arn
+    # Export:
+      # Name: !Sub ${ProjectName}-NodeInstance-ARN
   
   NodeSecurityGroup:
     Description: The security group for the node group
@@ -243,6 +439,6 @@ Outputs:
     Export:
       Name: !Sub ${ProjectName}-NodeSecurityGroup
   
-  NodeAutoScalingGroup:
-    Description: The Autoscaling Group
-    Value: !Ref NodeGroup
+  # NodeAutoScalingGroup:
+  #   Description: The Autoscaling Group
+  #   Value: !Ref NodeGroup

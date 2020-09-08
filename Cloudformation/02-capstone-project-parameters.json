@@ -10,5 +10,9 @@
     {
         "ParameterKey": "KubeVersion",
         "ParameterValue": "1.17"
+    },
+    {
+        "ParameterKey": "NodeGroupName",
+        "ParameterValue": "Testing-1234"
     }
 ]
