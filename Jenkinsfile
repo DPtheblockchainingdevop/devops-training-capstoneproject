@@ -6,6 +6,7 @@ pipeline {
         echo 'Linting HTML files'
         sh 'tidy -q -e index.html'
         echo 'Linting Dockerfile'
+        sh 'ls -al'
         sh 'hadolint Dockerfile'
       }
     }
