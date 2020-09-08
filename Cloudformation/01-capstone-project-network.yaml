@@ -174,7 +174,7 @@ Resources:
       - GreenPublicSubnet
     Properties:
       AllocationId: !GetAtt GreenNatGatewayEIP.AllocationId
-      SubnetId: !Ref GreenSubnet
+      SubnetId: !Ref GreenPublicSubnet
       Tags:
         - Key: Name
           Value: !Sub ${ProjectName}-GreenNatGateway
@@ -189,7 +189,7 @@ Resources:
       - BluePublicSubnet
     Properties:
       AllocationId: !GetAtt BlueNatGatewayEIP.AllocationId
-      SubnetId: !Ref BlueSubnet
+      SubnetId: !Ref BluePublicSubnet
       Tags:
         - Key: Name
           Value: !Sub ${ProjectName}-BlueNatGateway
@@ -206,11 +206,13 @@ Resources:
         - Key: Project
           Value: !Ref ProjectName
 
-  GreenSubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation 
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
     Properties:
-      RouteTableId: !Ref GreenRouteTable
-      SubnetId: !Ref GreenSubnet
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: !Ref InternetCIDR
+      GatewayId: !Ref InternetGateway
 
   GreenPublicRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -236,6 +238,22 @@ Resources:
         - Key: Project
           Value: !Ref ProjectName
 
+  GreenRoute:
+    Type: AWS::EC2::Route
+    DependsOn: 
+      - GreenNatGateway
+      - InternetGatewayAttachment
+    Properties: 
+      RouteTableId: !Ref GreenRouteTable
+      DestinationCidrBlock: !Ref InternetCIDR
+      NatGatewayId: !Ref GreenNatGateway
+
+  GreenSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation 
+    Properties:
+      RouteTableId: !Ref GreenRouteTable
+      SubnetId: !Ref GreenSubnet
+
   BlueRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -248,30 +266,6 @@ Resources:
         - Key: Project
           Value: !Ref ProjectName
 
-  BlueSubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref BlueRouteTable
-      SubnetId: !Ref BlueSubnet
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: InternetGatewayAttachment
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: !Ref InternetCIDR
-      GatewayId: !Ref InternetGateway
-
-  GreenRoute:
-    Type: AWS::EC2::Route
-    DependsOn: 
-      - GreenNatGateway
-      - InternetGatewayAttachment
-    Properties: 
-      RouteTableId: !Ref GreenRouteTable
-      DestinationCidrBlock: !Ref InternetCIDR
-      NatGatewayId: !Ref GreenNatGateway
-
   BlueRoute:
     Type: AWS::EC2::Route 
     DependsOn:
@@ -281,39 +275,64 @@ Resources:
       RouteTableId: !Ref BlueRouteTable
       DestinationCidrBlock: !Ref InternetCIDR
       NatGatewayId: !Ref BlueNatGateway
-          
-  ControlPlaneSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Cluster communication with worker nodes
-      VpcId: !Ref MainVPC
 
+  BlueSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref BlueRouteTable
+      SubnetId: !Ref BlueSubnet
+          
 Outputs:
   Project:
     Description: Name of the Project that this is for
     Value: !Ref ProjectName
     Export:
       Name: !Sub ${ProjectName}
+  
   VPC:
     Description: A reference to the created VPN
     Value: !Ref MainVPC
     Export:
       Name: !Sub ${ProjectName}-VPCID
-  
-  GreenSubnets:
-    Description: Green environment list of subnets
-    Value: !Join [ ",", [ !Ref GreenPublicSubnet, !Ref GreenSubnet ] ]
+
+  PublicRouteTable:
+    Description: Public Routing
+    Value: !Ref PublicRouteTable
     Export:
-      Name: !Sub ${ProjectName}-Green-Subnet
+      Name: !Sub ${ProjectName}-PUB-RouteTable
   
-  BlueSubnets:
-    Description: Blue environment list of subnets
-    Value: !Join [ ",", [ !Ref BluePublicSubnet, !Ref BlueSubnet ] ] 
+  GreenPrivateRouteTable:
+    Description: Green environment Private Routing
+    Value: !Ref GreenRouteTable
     Export:
-      Name: !Sub ${ProjectName}-Blue-Subnet
+      Name: !Sub ${ProjectName}-Green-RouteTable
+
+  BluePrivateRouteTable:
+    Description: Blue environment Private Routing
+    Value: !Ref BlueRouteTable
+    Export:
+      Name: !Sub ${ProjectName}-Blue-RouteTable
+
+  PublicSubnets:
+    Description: A list of the public subnets
+    Value: !Join [ ",", [ !Ref GreenPublicSubnet, !Ref BluePublicSubnet ] ]
+    Export:
+      Name: !Sub ${ProjectName}-PUB-NETS
+
+  PrivateSubnets:
+    Description: A list of the private subnets
+    Value: !Join [ ",", [ !Ref GreenSubnet, !Ref BlueSubnet ] ]
+    Export:
+      Name: !Sub ${ProjectName}-PRIV-NETS
+
+  GreenSubnet:
+    Description: Green environment private subnets
+    Value: !Ref GreenSubnet
+    Export:
+      Name: !Sub ${ProjectName}-Green-Subnets
   
-  SecurityGroups:
-    Description: Security group for the cluster control plane communication with worker nodes
-    Value: !Join [ ",", [ !Ref ControlPlaneSecurityGroup ] ]
+  BlueSubnet:
+    Description: Blue environment private subnets
+    Value: !Ref BlueSubnet
     Export:
-      Name: !Sub ${ProjectName}-SecurityGroups
+      Name: !Sub ${ProjectName}-Blue-Subnets
