@@ -49,13 +49,13 @@ pipeline {
           sh "kubectl apply -f capstone-k8s"
           script {
             DEPLOYMENT = sh (
-              script: 'cat capstone-k8s/deployment.yaml | grep -m 1 name | awk \'{print \$2}\' | tr -d \'\r\'',
+              script: "cat capstone-k8s/deployment.yaml | grep -m 1 name | awk '{print \$2}'",
               returnStdout: true
             ).trim()
             echo "Creating kubernetes resources..."
             sleep 180
             sh (
-              script: 'kubectl get deployment/$DEPLOYMENT',
+              script: "kubectl get deployment/$DEPLOYMENT",
               returnStdout:true
             )
           }
