@@ -39,7 +39,7 @@ pipeline {
 
     stage('Deploy on Dev') {
       steps {
-        withEnv(['IMAGE=833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest']){
+        withEnv(['KUBECONFIG=/home/ubuntu/.kube/config','IMAGE=833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest']){
           sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/deployment.yaml"
           sh "sed -i 's|ENVIRONMENT|dev|g' capstone-k8s/*.yaml"
           sh "kubectl apply -f capstone-k8s"
