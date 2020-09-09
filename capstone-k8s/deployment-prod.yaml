@@ -2,13 +2,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: capstone-app-ENVIRONMENT
-  namespace: ENVIRONMENT
   labels:
     app: capstone
     environment: ENVIRONMENT
     service.kubernetes.io/environment: ENVIRONMENT
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: capstone
