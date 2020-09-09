@@ -63,8 +63,13 @@ pipeline {
               script: "kubectl get deployment/$DEPLOYMENT | awk '{print \$4}' | grep -v AVAILABLE",
               returnStdout: true
             )
+            echo "CURRENT: $CURRENT"
+            echo "DESIRED: $DESIRED"
             if (DESIRED.equals(CURRENT)) {
               echo "SUCCESS"
+            }
+            else {
+              echo "FAILURE"
             }
           }
         }
