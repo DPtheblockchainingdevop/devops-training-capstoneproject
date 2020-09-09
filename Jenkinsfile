@@ -43,7 +43,7 @@ pipeline {
           sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/deployment.yaml"
           sh "sed -i 's|ENVIRONMENT|dev|g' capstone-k8s/*.yaml"
           echo "Using kube config from: ${KUBECONFIG}"
-          sh "id"
+          echo "Using aws shared file : ${AWS_SHARED_CREDENTIALS_FILE}"
           sh "kubectl apply -f capstone-k8s"
           script {
             DEPLOYMENT = sh (
