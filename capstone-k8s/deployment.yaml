@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: capstone-app-ENVIRONMENT
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: capstone
+    spec:
+      containers:
+      - name: capstone-app-ENVIRONMENT
+        image: IMAGE
+        imagePullPolicy: Always
+        ports:
+          -containerPort: 80
