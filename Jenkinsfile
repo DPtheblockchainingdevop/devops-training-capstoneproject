@@ -39,11 +39,12 @@ pipeline {
 
     stage('Deploy on Dev') {
       steps {
-        withEnv(['KUBECONFIG=/home/ubuntu/.kube/config','AWS_SHARED_CREDENTIALS_FILE=/home/ubuntu/.aws/credentials','IMAGE=833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest']){
+        withEnv(['KUBECONFIG=/home/ubuntu/.kube/config','AWS_PROFILE=default','AWS_SHARED_CREDENTIALS_FILE=/home/ubuntu/.aws/credentials','IMAGE=833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest']){
           sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/deployment.yaml"
           sh "sed -i 's|ENVIRONMENT|dev|g' capstone-k8s/*.yaml"
           echo "Using kube config from: ${KUBECONFIG}"
           echo "Using aws shared file : ${AWS_SHARED_CREDENTIALS_FILE}"
+          echo "Using aws profile: ${AWS_PROFILE}"
           sh "kubectl apply -f capstone-k8s"
           script {
             DEPLOYMENT = sh (
