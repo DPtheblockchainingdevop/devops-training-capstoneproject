@@ -105,7 +105,7 @@ pipeline {
             if (DESIRED.equals(CURRENT)) {
               echo "SUCCESS"
               sh "kubectl apply -f capstone-k8s/prod/service.yaml"
-              sleep 60
+              sleep 180
               PROD_URL = sh (
                 script: "kubectl get svc ${DEPLOYMENT} -o jsonpath=\"{.status.loadBalancer.ingress[*].hostname}\"",
                 returnStdout: true
