@@ -30,7 +30,7 @@ pipeline {
     stage('Push Image to ECR') {
       steps {   
         script {
-          docker.withRegistry('https://833142362823.dkr.ecr.us-east-2.amazonaws.com', 'ecr:us-east-2:aws-creds'){
+          docker.withRegistry('https://833142362823.dkr.ecr.us-east-2.amazonaws.com', 'ecr:us-east-2:aws-creds') {
             docker.image('capstone').push('latest')
           }
         }
@@ -45,7 +45,7 @@ pipeline {
           echo "Using kube config from: ${KUBECONFIG}"
           echo "Using aws shared file : ${AWS_SHARED_CREDENTIALS_FILE}"
           echo "Using aws profile: ${AWS_PROFILE}"
-          echo "printenv"
+          sh "printenv"
           sh "kubectl apply -f capstone-k8s"
           script {
             DEPLOYMENT = sh (
