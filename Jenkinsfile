@@ -53,12 +53,19 @@ pipeline {
               returnStdout: true
             ).trim()
             echo "Creating kubernetes resources..."
-            sleep 180
+            sleep 60
             echo "Deployment: $DEPLOYMENT"
-            sh (
-              script: "kubectl get deployment/$DEPLOYMENT",
-              returnStdout:true
+            CURRENT = sh (
+              script: "kubectl get deployment/$DEPLOYMENT | awk '{print \$3}' | grep -v UP-TO-DATE",
+              returnStdout: true
+            ).trim()
+            DESIRED = sh (
+              script: "kubectl get deployment/$DEPLOYMENT | awk '{print \$4}' | grep -v AVAILABLE",
+              returnStdout: true
             )
+            if (DESIRED.equals(CURRENT)) {
+              echo "SUCCESS"
+            }
           }
         }
       }
