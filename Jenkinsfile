@@ -54,6 +54,7 @@ pipeline {
             ).trim()
             echo "Creating kubernetes resources..."
             sleep 180
+            echo "Deployment: $DEPLOYMENT"
             sh (
               script: "kubectl get deployment/$DEPLOYMENT",
               returnStdout:true
