@@ -43,16 +43,18 @@ pipeline {
           sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/deployment.yaml"
           sh "sed -i 's|ENVIRONMENT|dev|g' capstone-k8s/*.yaml"
           sh "kubectl apply -f capstone-k8s"
-          env.DEPLOYMENT = sh (
-            script: 'cat capstone-k8s/deployment.yaml | grep -m 1 name | awk \'{print \$2}\'',
-            returnStdout: true
-          ).trim()
-          echo "Creating kubernetes resources..."
-          sleep 180
-          sh (
-            script: 'kubectl get deployment/$DEPLOYMENT',
-            returnStdout:true
-          )
+          script {
+            DEPLOYMENT = sh (
+              script: 'cat capstone-k8s/deployment.yaml | grep -m 1 name | awk \'{print \$2}\'',
+              returnStdout: true
+            ).trim()
+            echo "Creating kubernetes resources..."
+            sleep 180
+            sh (
+              script: 'kubectl get deployment/$DEPLOYMENT',
+              returnStdout:true
+            )
+          }
         }
       }
     }
