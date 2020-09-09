@@ -40,12 +40,12 @@ pipeline {
     stage('Deploy on Dev') {
       steps {
         withEnv(["KUBECONFIG=${JENKINS_HOME}/.kube/config",'AWS_PROFILE=default',"AWS_SHARED_CREDENTIALS_FILE=${JENKINS_HOME}/.aws/credentials",'IMAGE=833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest']){
-          sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/deployment.yaml"
-          sh "sed -i 's|ENVIRONMENT|dev|g' capstone-k8s/*.yaml"
-          echo "Using kube config from: ${KUBECONFIG}"
-          echo "Using aws shared file : ${AWS_SHARED_CREDENTIALS_FILE}"
-          echo "Using aws profile: ${AWS_PROFILE}"
-          sh "printenv"
+          sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/deployment-dev.yaml"
+          sh "sed -i 's|ENVIRONMENT|dev|g' capstone-k8s/*dev.yaml"
+          // echo "Using kube config from: ${KUBECONFIG}"
+          // echo "Using aws shared file : ${AWS_SHARED_CREDENTIALS_FILE}"
+          // echo "Using aws profile: ${AWS_PROFILE}"
+          // sh "printenv"
           sh "kubectl apply -f capstone-k8s"
           script {
             DEPLOYMENT = sh (
@@ -63,8 +63,8 @@ pipeline {
               script: "kubectl get deployment/$DEPLOYMENT | awk '{print \$4}' | grep -v AVAILABLE",
               returnStdout: true
             ).trim()
-            echo "CURRENT: $CURRENT"
-            echo "DESIRED: $DESIRED"
+            // echo "CURRENT: $CURRENT"
+            // echo "DESIRED: $DESIRED"
             if (DESIRED.equals(CURRENT)) {
               echo "SUCCESS"
             }
@@ -79,8 +79,8 @@ pipeline {
     stage('Deploy to Prod'){
       steps {
         withEnv(["KUBECONFIG=${JENKINS_HOME}/.kube/config",'AWS_PROFILE=default',"AWS_SHARED_CREDENTIALS_FILE=${JENKINS_HOME}/.aws/credentials",'IMAGE=833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest']){
-          sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/deployment.yaml"
-          sh "sed -i 's|dev|prod|g' capstone-k8s/*.yaml"
+          sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/deployment-prod.yaml"
+          sh "sed -i 's|ENVIRONMENT|prod|g' capstone-k8s/*prod.yaml"
           sh "kubectl apply -f capstone-k8s"
           script {
             echo "Deploying to Production..."
@@ -99,10 +99,11 @@ pipeline {
               script: "kubectl get deployment/$DEPLOYMENT | awk '{print \$4}' | grep -v AVAILABLE",
               returnStdout: true
             ).trim()
-            echo "CURRENT: $CURRENT"
-            echo "DESIRED: $DESIRED"
+            // echo "CURRENT: $CURRENT"
+            // echo "DESIRED: $DESIRED"
             if (DESIRED.equals(CURRENT)) {
               echo "SUCCESS"
+
             }
             else {
               echo "FAILURE"
