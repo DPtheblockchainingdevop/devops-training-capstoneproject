@@ -105,9 +105,26 @@ pipeline {
             if (DESIRED.equals(CURRENT)) {
               echo "SUCCESS"
               sh "kubectl apply -f capstone-k8s/prod/service.yaml"
+              PROD_URL = sh (
+                script: "kubectl get svc ${DEPLOYMENT} -o jsonpath=\"{.status.loadBalancer.ingress[*].hostname}\"",
+                returnStdout: true
+              ).trim()
+              echo "Production URL: ${PROD_URL}"
+              RESPONSE = sh (
+                script: "curl -s -o /dev/null -w \"%{http_code}\" http://${PROD_URL}",
+                returnStdout: true
+              ).trim()
+              echo "RESPONSE:${RESPONSE}"
             }
             else {
               echo "FAILURE"
+            }
+            if (RESPONSE == "200"){
+              echo "Application is working fine"
+            }
+            else{
+              echo "Application did not pass the test case."
+              echo "Production application deployment FAILURE"
             }
           }
         }
