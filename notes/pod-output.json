@@ -1,0 +1,296 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {
+                "annotations": {
+                    "kubernetes.io/psp": "eks.privileged"
+                },
+                "creationTimestamp": "2020-09-09T02:52:49Z",
+                "generateName": "capstone-app-dev-679c6f6448-",
+                "labels": {
+                    "app": "capstone",
+                    "pod-template-hash": "679c6f6448"
+                },
+                "name": "capstone-app-dev-679c6f6448-xhsth",
+                "namespace": "default",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "apps/v1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "ReplicaSet",
+                        "name": "capstone-app-dev-679c6f6448",
+                        "uid": "2600f65b-353c-41e1-8559-063bb978da91"
+                    }
+                ],
+                "resourceVersion": "96972",
+                "selfLink": "/api/v1/namespaces/default/pods/capstone-app-dev-679c6f6448-xhsth",
+                "uid": "26e8805a-8e21-4d21-aba3-c8b0207b5fbc"
+            },
+            "spec": {
+                "containers": [
+                    {
+                        "image": "833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest",
+                        "imagePullPolicy": "Always",
+                        "name": "capstone-app-dev",
+                        "ports": [
+                            {
+                                "containerPort": 80,
+                                "protocol": "TCP"
+                            }
+                        ],
+                        "resources": {},
+                        "terminationMessagePath": "/dev/termination-log",
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                                "name": "default-token-wm2lk",
+                                "readOnly": true
+                            }
+                        ]
+                    }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "enableServiceLinks": true,
+                "nodeName": "ip-10-0-10-169.us-east-2.compute.internal",
+                "priority": 0,
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "serviceAccount": "default",
+                "serviceAccountName": "default",
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/not-ready",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    },
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/unreachable",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    }
+                ],
+                "volumes": [
+                    {
+                        "name": "default-token-wm2lk",
+                        "secret": {
+                            "defaultMode": 420,
+                            "secretName": "default-token-wm2lk"
+                        }
+                    }
+                ]
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2020-09-09T02:52:49Z",
+                        "status": "True",
+                        "type": "Initialized"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2020-09-09T02:52:55Z",
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2020-09-09T02:52:55Z",
+                        "status": "True",
+                        "type": "ContainersReady"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2020-09-09T02:52:49Z",
+                        "status": "True",
+                        "type": "PodScheduled"
+                    }
+                ],
+                "containerStatuses": [
+                    {
+                        "containerID": "docker://be2a95f980316aeaee4c8e41d45433ce67ac8621eaf82f01c89cf5e0e9f45a80",
+                        "image": "833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest",
+                        "imageID": "docker-pullable://833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone@sha256:0dcab07db6e9124bd46952c34232869eb1a220b714a14205ec0c2c3cab852db8",
+                        "lastState": {},
+                        "name": "capstone-app-dev",
+                        "ready": true,
+                        "restartCount": 0,
+                        "started": true,
+                        "state": {
+                            "running": {
+                                "startedAt": "2020-09-09T02:52:55Z"
+                            }
+                        }
+                    }
+                ],
+                "hostIP": "10.0.10.169",
+                "phase": "Running",
+                "podIP": "10.0.10.81",
+                "podIPs": [
+                    {
+                        "ip": "10.0.10.81"
+                    }
+                ],
+                "qosClass": "BestEffort",
+                "startTime": "2020-09-09T02:52:49Z"
+            }
+        },
+        {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {
+                "annotations": {
+                    "kubernetes.io/psp": "eks.privileged"
+                },
+                "creationTimestamp": "2020-09-09T05:40:45Z",
+                "generateName": "capstone-app-prod-67bd47766d-",
+                "labels": {
+                    "app": "capstone",
+                    "pod-template-hash": "67bd47766d"
+                },
+                "name": "capstone-app-prod-67bd47766d-gzbzb",
+                "namespace": "default",
+                "ownerReferences": [
+                    {
+                        "apiVersion": "apps/v1",
+                        "blockOwnerDeletion": true,
+                        "controller": true,
+                        "kind": "ReplicaSet",
+                        "name": "capstone-app-prod-67bd47766d",
+                        "uid": "41d326d8-2907-49da-8162-ebd27f5481f3"
+                    }
+                ],
+                "resourceVersion": "127875",
+                "selfLink": "/api/v1/namespaces/default/pods/capstone-app-prod-67bd47766d-gzbzb",
+                "uid": "e8e4deee-bada-4d82-b024-b8a1d80891f6"
+            },
+            "spec": {
+                "containers": [
+                    {
+                        "image": "833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest",
+                        "imagePullPolicy": "Always",
+                        "name": "capstone-app-prod",
+                        "ports": [
+                            {
+                                "containerPort": 80,
+                                "protocol": "TCP"
+                            }
+                        ],
+                        "resources": {},
+                        "terminationMessagePath": "/dev/termination-log",
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                                "name": "default-token-wm2lk",
+                                "readOnly": true
+                            }
+                        ]
+                    }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "enableServiceLinks": true,
+                "nodeName": "ip-10-0-20-116.us-east-2.compute.internal",
+                "priority": 0,
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "serviceAccount": "default",
+                "serviceAccountName": "default",
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/not-ready",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    },
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/unreachable",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    }
+                ],
+                "volumes": [
+                    {
+                        "name": "default-token-wm2lk",
+                        "secret": {
+                            "defaultMode": 420,
+                            "secretName": "default-token-wm2lk"
+                        }
+                    }
+                ]
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2020-09-09T05:40:45Z",
+                        "status": "True",
+                        "type": "Initialized"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2020-09-09T05:40:51Z",
+                        "status": "True",
+                        "type": "Ready"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2020-09-09T05:40:51Z",
+                        "status": "True",
+                        "type": "ContainersReady"
+                    },
+                    {
+                        "lastProbeTime": null,
+                        "lastTransitionTime": "2020-09-09T05:40:45Z",
+                        "status": "True",
+                        "type": "PodScheduled"
+                    }
+                ],
+                "containerStatuses": [
+                    {
+                        "containerID": "docker://700939e47e3fd7af1b0e01ccb1462199c47c544652eff693175b8ee99d2d619c",
+                        "image": "833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest",
+                        "imageID": "docker-pullable://833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone@sha256:0dcab07db6e9124bd46952c34232869eb1a220b714a14205ec0c2c3cab852db8",
+                        "lastState": {},
+                        "name": "capstone-app-prod",
+                        "ready": true,
+                        "restartCount": 0,
+                        "started": true,
+                        "state": {
+                            "running": {
+                                "startedAt": "2020-09-09T05:40:50Z"
+                            }
+                        }
+                    }
+                ],
+                "hostIP": "10.0.20.116",
+                "phase": "Running",
+                "podIP": "10.0.20.158",
+                "podIPs": [
+                    {
+                        "ip": "10.0.20.158"
+                    }
+                ],
+                "qosClass": "BestEffort",
+                "startTime": "2020-09-09T05:40:45Z"
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": "",
+        "selfLink": ""
+    }
+}
