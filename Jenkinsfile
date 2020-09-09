@@ -46,7 +46,7 @@ pipeline {
           // echo "Using aws shared file : ${AWS_SHARED_CREDENTIALS_FILE}"
           // echo "Using aws profile: ${AWS_PROFILE}"
           // sh "printenv"
-          sh "kubectl apply -f capstone-k8s"
+          sh "kubectl apply -f capstone-k8s/*dev.yaml"
           script {
             DEPLOYMENT = sh (
               script: "cat capstone-k8s/deployment.yaml | grep -m 1 name | awk '{print \$2}'",
@@ -81,7 +81,7 @@ pipeline {
         withEnv(["KUBECONFIG=${JENKINS_HOME}/.kube/config",'AWS_PROFILE=default',"AWS_SHARED_CREDENTIALS_FILE=${JENKINS_HOME}/.aws/credentials",'IMAGE=833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest']){
           sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/deployment-prod.yaml"
           sh "sed -i 's|ENVIRONMENT|prod|g' capstone-k8s/*prod.yaml"
-          sh "kubectl apply -f capstone-k8s"
+          sh "kubectl apply -f capstone-k8s/*prod.yaml"
           script {
             echo "Deploying to Production..."
             DEPLOYMENT = sh (
