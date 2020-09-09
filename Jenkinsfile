@@ -112,7 +112,7 @@ pipeline {
               ).trim()
               echo "Production URL: ${PROD_URL}"
               RESPONSE = sh (
-                script: "curl -s -o /dev/null -w \"%{http_code}\" http://${PROD_URL}",
+                script: "curl -s -o /dev/null -w \"%{http_code}\" http://${PROD_URL}/ ; echo \"Exit code: $?\"",
                 returnStdout: true
               ).trim()
               echo "RESPONSE:${RESPONSE}"
