@@ -42,10 +42,11 @@ pipeline {
         withEnv(['KUBECONFIG=/home/ubuntu/.kube/config','IMAGE=833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest']){
           sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/deployment.yaml"
           sh "sed -i 's|ENVIRONMENT|dev|g' capstone-k8s/*.yaml"
+          echo "Using kube config from: ${KUBECONFIG}"
           sh "kubectl apply -f capstone-k8s"
           script {
             DEPLOYMENT = sh (
-              script: 'cat capstone-k8s/deployment.yaml | grep -m 1 name | awk \'{print \$2}\'',
+              script: 'cat capstone-k8s/deployment.yaml | grep -m 1 name | awk \'{print \$2}\' | tr -d \'\r\'',
               returnStdout: true
             ).trim()
             echo "Creating kubernetes resources..."
