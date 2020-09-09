@@ -3,31 +3,18 @@ Description: >
   Project - Udacity DevOps Capstone Project
   Creates the Kubernetes Repository for the capstone project.
 
+Parameters:
+  ProjectName:
+    Description: An project Name that will be prefixed to resoure names
+    Type: String
+
 Resources:
   ProjectRepository:
     Type: AWS::ECR::Repository 
     Properties:
       ImageScanningConfiguration:
         scanOnPush: true
-      RepositoryName: 
-        Fn::ImportValue: !Sub '${ProjectName}'
-      RepositoryPolicyText:
-        Version: 2012-10-17
-        Statement:
-          -
-            Sid: AllowPushPull
-            Effect: Allow
-            Principal:
-              AWS:
-                - arn:aws:iam::833142362823:user/drp_training
-              Action:
-                - ecr:GetDownloadUrlForLayer
-                - ecr:BatchGetImage
-                - ecr:BatchCheckLayerAvailability
-                - ecr:PutImage
-                - ecr:InitiateLayerUpload
-                - ecr:UploadLayerPart
-                - ecr:CompleteLayerUpload
+      RepositoryName: !Sub '${ProjectName}'
 Outputs:
   Repository:
     Value: !GetAtt ProjectRepository.Arn 
