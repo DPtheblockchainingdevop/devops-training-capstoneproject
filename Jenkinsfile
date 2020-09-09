@@ -46,7 +46,7 @@ pipeline {
           // echo "Using aws shared file : ${AWS_SHARED_CREDENTIALS_FILE}"
           // echo "Using aws profile: ${AWS_PROFILE}"
           // sh "printenv"
-          sh "kubectl apply -f capstone-k8s/dev/*.yaml"
+          sh "kubectl apply -f capstone-k8s/dev/deployment.yaml"
           script {
             DEPLOYMENT = sh (
               script: "cat capstone-k8s/dev/deployment.yaml | grep -m 1 name | awk '{print \$2}'",
@@ -67,6 +67,7 @@ pipeline {
             // echo "DESIRED: $DESIRED"
             if (DESIRED.equals(CURRENT)) {
               echo "SUCCESS"
+              sh "kubectl apply -f capstone-k8s/dev/service.yaml"
             }
             else {
               echo "FAILURE"
