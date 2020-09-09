@@ -82,7 +82,7 @@ pipeline {
         withEnv(["KUBECONFIG=${JENKINS_HOME}/.kube/config",'AWS_PROFILE=default',"AWS_SHARED_CREDENTIALS_FILE=${JENKINS_HOME}/.aws/credentials",'IMAGE=833142362823.dkr.ecr.us-east-2.amazonaws.com/capstone:latest']){
           sh "sed -i 's|IMAGE|${IMAGE}|g' capstone-k8s/prod/deployment.yaml"
           sh "sed -i 's|ENVIRONMENT|prod|g' capstone-k8s/prod/*.yaml"
-          sh "kubectl apply -f capstone-k8s/prod/*.yaml"
+          sh "kubectl apply -f capstone-k8s/prod/deployment.yaml"
           script {
             echo "Deploying to Production..."
             DEPLOYMENT = sh (
@@ -104,7 +104,7 @@ pipeline {
             // echo "DESIRED: $DESIRED"
             if (DESIRED.equals(CURRENT)) {
               echo "SUCCESS"
-
+              sh "kubectl apply -f capstone-k8s/prod/service.yaml"
             }
             else {
               echo "FAILURE"
