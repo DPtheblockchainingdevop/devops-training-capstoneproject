@@ -32,8 +32,7 @@ Metadata:
       VPCID:
         default: Existing VPC for the project
       Subnets:
-        default: The subnets where workers can be created
-    
+        default: The subnets where workers can be created 
 
 Parameters:
   BootstrapArguments:
