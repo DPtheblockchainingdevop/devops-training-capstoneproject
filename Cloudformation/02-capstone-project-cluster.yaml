@@ -20,6 +20,14 @@ Metadata:
         Parameters:
           - VPCID
           - Subnets
+      - Label:
+          default: "Scaling Configuration"
+        Parameters:
+          - AutoScalingMaxSize
+          - AutoScalingMinSize
+          - AutoScalingDesiredCapacity
+          - EKSAmiType
+          - SSHKeyPairs
     ParameterLabels:
       ProjectName:
         default: "Name of the Project which will be used for the Cluster name"
@@ -33,6 +41,16 @@ Metadata:
         default: Existing VPC for the project
       Subnets:
         default: The subnets where workers can be created 
+      AutoScalingDesiredCapacity:
+        default: Desired capacity of the Node Auto Scaling group
+      AutoScalingMaxSize:
+        default: Maximum size of Node Auto Scaling group. Set to at least 1 greater than Desired capacity
+      AutoScalingMinSize:
+        default: Minimum size of Node Auto Scaling group.
+      EKSAmiType: 
+        default: AMI type for node group
+      SSHKeyPairs:
+        default: SSH key for node group
 
 Parameters:
   BootstrapArguments:
@@ -68,8 +86,37 @@ Parameters:
     Description: The subnets where workers can be created.
 
   VPCID:
-    Type: List<AWS::EC2::VPC::Id>
+    Type: AWS::EC2::VPC::Id
     Description: The VPC of the worker instances
+
+  AutoScalingDesiredCapacity:
+    Type: Number
+    Description: The current number of worker nodes that the managed node group should maintain.
+    MinValue: 1
+
+  AutoScalingMaxSize:
+    Type: Number
+    Description: The maximum number of worker nodes that the managed node group can scale out to. Managed node groups can support up to 100 nodes by default.
+    MinValue: 1
+  
+  AutoScalingMinSize:
+    Type: Number
+    Description: The minimum number of worker nodes that the managed node group can scale in to. This number must be greater than zero.
+    MinValue: 1
+
+  EKSAmiType:
+    Type: String
+    Description: The AMI type for your node group. GPU instance types should use the AL2_x86_64_GPU AMI type. Non-GPU instances should use the AL2_x86_64 AMI type. Arm instances should use the AL2_ARM_64 AMI type. All types use the Amazon EKS optimized Amazon Linux 2 AMI.
+    Default: AL2_x86_64
+    AllowedValues:
+      - AL2_ARM_64
+      - AL2_x86_64
+      - AL2_x86_64_GPU
+    ConstraintDescription: Allowed values are AL2_ARM_64 | AL2_x86_64 | AL2_x86_64_GPU
+  
+  SSHKeyPairs:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: The Amazon EC2 SSH key that provides access for SSH communication with the worker nodes in the managed node group
 
 Resources:
   ControlPlaneSecurityGroup:
@@ -272,14 +319,14 @@ Resources:
       ClusterName: !Ref KubeCluster
       NodeRole: arn:aws:iam::833142362823:role/NodeInstanceRole
       ScalingConfig:
-        MinSize: 2
-        MaxSize: 6
-        DesiredSize: 2
-      AmiType: AL2_x86_64
+        MinSize: !Ref AutoScalingMinSize
+        MaxSize: !Ref AutoScalingMaxSize
+        DesiredSize: !Ref AutoScalingDesiredCapacity
+      AmiType: !Ref EKSAmiType
       InstanceTypes: 
         - t3.medium
       RemoteAccess:
-        Ec2SshKey: Jenkins-training
+        Ec2SshKey: !Ref SSHKeyPairs
         SourceSecurityGroups:
           - !Ref NodeSecurityGroup
           - !Ref JumpBoxSecurityGroup
@@ -295,7 +342,7 @@ Resources:
       InstanceType: t2.medium
       ImageId: ami-0010d386b82bc06f0
       AvailabilityZone: !Select [1, !GetAZs '']
-      KeyName: Jenkins-training
+      KeyName: !Ref SSHKeyPairs
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
           DeviceIndex: 0
