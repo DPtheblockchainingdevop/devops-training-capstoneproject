@@ -1,7 +1,35 @@
+AWSTemplateFormatVersion: 2010-09-09
+
 Description: >
   Author - DeVesco Pierre
   Project - Udacity DevOps Capstone Project
   Creates the network and EC2 instaces to Run a Jenkins server in the public domain. Also creates a Green/Blue Subnets
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Kubernetes Network Configuration"
+        Parameters:
+          - ProjectName
+          - VpcCIDR
+          - PublicSubnetGreenCIDR
+          - PublicSubnetBlueCIDR
+          - GreenSubnetCIDR
+          - BlueSubnetCIDR
+    ParameterLabels:
+      ProjectName:
+        default: Name of the Project which will be used for the Cluster name
+      VpcCIDR:
+        default: VPC IP range in CIDR Notation
+      PublicSubnetGreenCIDR: 
+        default: Greenn (Production) public Subnet Ip range in CIDR Notation
+      PublicSubnetBlueCIDR: 
+        default: Blue (Dev/Test) public Subnet Ip range in CIDR Notation
+      GreenSubnetCIDR: 
+        default: Green (Production) private Subnet Ip range in CIDR Notation
+      BlueSubnetCIDR: 
+        default: Blue (Dev/Test) private subnet Ip range in CIDR Notation
 
 Parameters:
   ProjectName:
@@ -37,25 +65,6 @@ Parameters:
     Description: The CIRD notation for the internet
     Type: String
     Default: 0.0.0.0/0
-
-Metadata:
-  AWS::CloudFormation::Interface:
-    ParameterGroups:
-      -
-        Label:
-          default: "Kubernetes Network Configuration"
-        Parameters:
-          - ProjectName
-          - VpcCIDR
-          - PublicSubnetGreenCIDR
-          - PublicSubnetBlueCIDR
-          - GreenSubnetCIDR
-          - BlueSubnetCIDR
-    ParameterLabels:
-      ProjectName:
-        default: "Name of the Project which will be used for the Cluster name"
-      VpcCIDR:
-        default: "VPC IP range in CIDR Notation"
 
 Resources:
   MainVPC:

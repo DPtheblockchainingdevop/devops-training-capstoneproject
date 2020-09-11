@@ -3,11 +3,26 @@ Description: >
   Project - Udacity DevOps Capstone Project
   Creates the Kubernetes Repository for the capstone project.
 
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Repo Configuration
+        Parameters:
+          - ProjectName
+    ParameterLabels:
+      ProjectName:
+        default: Project name that will use the repository
+
 Parameters:
   ProjectName:
     Description: An project Name that will be prefixed to resoure names
     Type: String
-
+    AllowedPattern: (?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*
+    ConstraintDescription: Project Name must match pattern (?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*
+    MaxLength: 256
+    MinLength: 2
+    
 Resources:
   ProjectRepository:
     Type: AWS::ECR::Repository 

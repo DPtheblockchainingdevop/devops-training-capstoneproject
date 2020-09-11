@@ -1,7 +1,39 @@
+AWSTemplateFormatVersion: 2010-09-09
+
 Description: >
   Author - DeVesco Pierre
   Project - Udacity DevOps Capstone Project
   Creates the Kubernetes Cluster for the capstone project. Will use Green and Blue networks 
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Kubernetes Cluster Configuration"
+        Parameters:
+          - BootstrapArguments
+          - ProjectName
+          - ClusterIAMRole
+          - KubeVersion
+      - Label:
+          default: "Project Network Configuration"
+        Parameters:
+          - VPCID
+          - Subnets
+    ParameterLabels:
+      ProjectName:
+        default: "Name of the Project which will be used for the Cluster name"
+      ClusterIAMRole:
+        default: "IAM Role to allow the kubernetes control plane to manage AWS resources"
+      KubeVersion:
+        default: Desired kubernetes cluster version
+      BootstrapArguments:
+        default: Arguments for the bootstrap script
+      VPCID:
+        default: Existing VPC for the project
+      Subnets:
+        default: The subnets where workers can be created
+    
 
 Parameters:
   BootstrapArguments:
@@ -16,40 +48,36 @@ Parameters:
   KubeVersion:
     Description: The Desired Kubernetes version for the cluster. Defaults to the latest version
     Type: String
+    Default: 1.17
+    AllowedValues:
+      - 1.17
+      - 1.16
+      - 1.15
+      - 1.14
+    ConstraintDescription: Must be a valid Kubernetes version
 
-  NodeGroupName:
-    Type: String
-    Description: Unique identifier for the Node Group.
-  
   ProjectName:
     Description: An project Name that will be prefixed to resoure names
     Type: String
+    AllowedPattern: (?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*
+    ConstraintDescription: Project Name must match pattern (?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*
+    MaxLength: 256
+    MinLength: 2
+  
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: The subnets where workers can be created.
 
-Metadata:
-  AWS::CloudFormation::Interface:
-    ParameterGroups:
-      -
-        Label:
-          default: "Kubernetes Cluster Configuration"
-        Parameters:
-          - BootstrapArguments
-          - ProjectName
-          - ClusterIAMRole
-          - KubeVersion
-          - NodeGroupName
-    ParameterLabels:
-      ProjectName:
-        default: "Name of the Project which will be used for the Cluster name"
-      ClusterIAMRole:
-        default: "IAM Role to allow the kubernetes control plane to manage AWS resources"
+  VPCID:
+    Type: List<AWS::EC2::VPC::Id>
+    Description: The VPC of the worker instances
 
 Resources:
   ControlPlaneSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Cluster communication with worker nodes
-      VpcId: 
-        'Fn::ImportValue': !Sub '${ProjectName}-VPCID'
+      VpcId: !Ref VPCID
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -58,8 +86,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for all nodes in the cluster
-      VpcId: 
-        Fn::ImportValue: !Sub '${ProjectName}-VPCID'
+      VpcId: !Ref VPCID
       Tags:
         - Key: !Sub kubernetes.io/cluster/${KubeCluster}
           Value: owned
@@ -182,8 +209,7 @@ Resources:
     Properties:
       GroupName: JumpBox
       GroupDescription: Security Group for the JumpBox that will be used for troubleshooting
-      VpcId: 
-        Fn::ImportValue: !Sub '${ProjectName}-VPCID'
+      VpcId: !Ref VPCID
       Tags:
         - Key: Project
           Value: !Ref ProjectName
@@ -237,110 +263,12 @@ Resources:
           - !Ref ControlPlaneSecurityGroup
           # - !Ref JumpBox
         SubnetIds:
-          - !Select 
-            - 0
-            - !Split 
-              - ','
-              - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
-          - !Select
-            - 1
-            - !Split
-              - ','
-              - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
-          - !Select
-            - 0
-            - !Split
-              - ','
-              - 'Fn::ImportValue': !Sub '${ProjectName}-PRIV-NETS'
-          - !Select
-            - 1
-            - !Split
-              - ','
-              - 'Fn::ImportValue': !Sub '${ProjectName}-PRIV-NETS'
-
-  # NodeLaunchTemplate:
-  #   Type: AWS::EC2::LaunchTemplate
-  #   DependsOn: 
-  #     - NodeSecurityGroup
-  #     - KubeCluster
-  #   Properties:
-  #     LaunchTemplateData:
-  #       BlockDeviceMappings:
-  #         - DeviceName: /dev/xvda
-  #           Ebs:
-  #             DeleteOnTermination: true
-  #             VolumeSize: 20
-  #             VolumeType: gp2
-  #       IamInstanceProfile:
-  #         Arn: arn:aws:iam::833142362823:instance-profile/NodeInstanceRole
-  #       ImageId: ami-072868043b527ff26
-  #       InstanceType: t3.medium
-  #       KeyName: Jenkins-training
-  #       SecurityGroupIds:
-  #         - !Ref NodeSecurityGroup
-  #         - !Ref JumpBoxSecurityGroup
-  #       UserData: !Base64
-  #         Fn::Sub: |
-  #           #!/bin/bash
-  #           set -o xtrace
-  #           /etc/eks/bootstrap.sh ${KubeCluster} ${BootstrapArguments}
-  #           /opt/aws/bin/cfn-signal --exit-code $? \
-  #                 --stack ${AWS::StackName} \
-  #                 --resource NodeGroup \
-  #                 --region ${AWS::Region}
-  #       MetadataOptions:
-  #         HttpPutResponseHopLimit: 2
-  #         HttpEndpoint: enabled
-          
-  # NodeGroup:
-  #   DependsOn: 
-  #     - KubeCluster
-  #     - NodeLaunchTemplate
-  #   Type: AWS::AutoScaling::AutoScalingGroup
-  #   Properties:
-  #     DesiredCapacity: 2
-  #     LaunchTemplate:
-  #       LaunchTemplateId: !Ref NodeLaunchTemplate
-  #       Version: !GetAtt NodeLaunchTemplate.LatestVersionNumber
-  #     MaxSize: 6
-  #     MinSize: 2
-  #     Tags:
-  #       - Key: Name
-  #         PropagateAtLaunch: true
-  #         Value: 
-  #           !Join 
-  #             - ''
-  #             - - Fn::ImportValue: !Sub '${ProjectName}'
-  #               - '-Project-'
-  #               - !Sub '${NodeGroupName}'
-  #               - '-Node'
-  #       - Key: !Sub kubernetes.io/cluster/${KubeCluster}
-  #         PropagateAtLaunch: true
-  #         Value: owned
-  #     VPCZoneIdentifier: 
-  #       - Fn::ImportValue: !Sub '${ProjectName}-Blue-Subnets'
-  #       - Fn::ImportValue: !Sub '${ProjectName}-Green-Subnets'
-  #       - !Select
-  #         - 0
-  #         - !Split
-  #           - ','
-  #           - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
-  #       - !Select
-  #         - 1
-  #         - !Split
-  #           - ','
-  #           - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
-  #   UpdatePolicy:
-  #     AutoscalingRollingUpdate:
-  #       MaxBatchSize: 1
-  #       MinInstancesInService: 2
-  #       PauseTime: PT5M
+          !Ref Subnets
 
   EKSNodeGroup:
     Type: AWS::EKS::Nodegroup 
     DependsOn:
       - KubeCluster
-      # - NodeLaunchTemplate
     Properties:
       ClusterName: !Ref KubeCluster
       NodeRole: arn:aws:iam::833142362823:role/NodeInstanceRole
@@ -357,21 +285,9 @@ Resources:
           - !Ref NodeSecurityGroup
           - !Ref JumpBoxSecurityGroup
       Subnets:
-        - Fn::ImportValue: !Sub '${ProjectName}-Blue-Subnets'
-        - Fn::ImportValue: !Sub '${ProjectName}-Green-Subnets'
-        - !Select
-          - 0
-          - !Split
-            - ','
-            - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
-        - !Select
-          - 1
-          - !Split
-            - ','
-            - 'Fn::ImportValue': !Sub '${ProjectName}-PUB-NETS'
+        !Ref Subnets
       Tags:
         Project: !Ref ProjectName
-
 
   JumpBoxServer:
     DependsOn: JumpBoxSecurityGroup
@@ -427,18 +343,8 @@ Outputs:
     Export:
       Name: !Sub ${ProjectName}-EKS-ControlPlane
   
-  # NodeInstanceRole:
-    # Description: The node Instance role
-    # Value: !GetAtt NodeInstanceRole.Arn
-    # Export:
-      # Name: !Sub ${ProjectName}-NodeInstance-ARN
-  
   NodeSecurityGroup:
     Description: The security group for the node group
     Value: !Ref NodeSecurityGroup
     Export:
       Name: !Sub ${ProjectName}-NodeSecurityGroup
-  
-  # NodeAutoScalingGroup:
-  #   Description: The Autoscaling Group
-  #   Value: !Ref NodeGroup
