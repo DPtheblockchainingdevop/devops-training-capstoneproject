@@ -35,11 +35,15 @@ Parameters:
   ProjectName:
     Description: An project Name that will be prefixed to resoure names
     Type: String
+    AllowedPattern: (?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*
+    ConstraintDescription: Project Name must match pattern (?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*
+    MaxLength: 256
+    MinLength: 2
 
   VpcCIDR:
     Description: VPC IP range in CIDR Notation
     Type: String
-    Default: 10.0.0.0/24
+    Default: 10.0.0.0/16
   
   PublicSubnetGreenCIDR:
     Description: Green environment public IP range (CIDR notation)
